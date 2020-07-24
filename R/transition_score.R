@@ -30,6 +30,8 @@ compute_local_transition_score = function(
   kernel_fun = shifted_scaled_sigmoid
 ){
 
+  original_colnames = colnames(data)
+
   # CHECKS
   if(nrow(data) == 0) return(data)
   data_required_cols = c("subject_id","t","CST")
@@ -49,7 +51,9 @@ compute_local_transition_score = function(
   data = data %>% dplyr::arrange(subject_id, t)
 
   # define x:
-  data = data %>% dplyr::mutate(x = (CST == CST_X))
+  data = data %>%
+    dplyr::mutate(x = (CST == CST_X)) %>%
+    dplyr::mutate(x = ifelse(is.na(x), FALSE, x))
   if(transition_type == "OUT") data = data %>% dplyr::mutate(x = !x)
 
   # identify "off" transitions
@@ -78,10 +82,11 @@ compute_local_transition_score = function(
 
   # compute_score
   data = data %>%
-    dplyr::mutate(score = kernel_fun(t = time_to_transition, timescale = timescale, tx = -0.5))
+    dplyr::mutate(score = kernel_fun(t = time_to_transition, timescale = timescale, tx = -0.5)) %>%
+    dplyr::mutate(score = ifelse(is.na(CST), NA, score))
 
   # clean the data.frame
-  data = data %>% dplyr::select(subject_id, t, score)
+  data = data %>% dplyr::select(tidyselect::all_of(unique(c("subject_id","t","score", original_colnames))))
   # return results
   data
 }
